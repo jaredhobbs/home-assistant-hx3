@@ -11,8 +11,12 @@
         "step": {
             "user": {
                 "data": {
+                    "email": "Email",
                     "token": "Token",
-                    "email": "Email"
+                    "access_token": "Access token",
+                    "refresh_token": "Refresh token",
+                    "ttl": "TTL",
+                    "last_refresh": "Last refresh"
                 }
             }
         }

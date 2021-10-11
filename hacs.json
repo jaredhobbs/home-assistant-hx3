@@ -1,5 +1,6 @@
 {
     "name": "Hx 3 Thermostat",
+    "render_readme": true,
     "hacs": "1.6.0",
     "domains": [
         "climate"

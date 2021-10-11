@@ -3,13 +3,13 @@ from __future__ import annotations
 import asyncio
 from datetime import timedelta
 
-from homeassistant.const import CONF_EMAIL, CONF_TOKEN
+from homeassistant.const import CONF_EMAIL, CONF_TOKEN, CONF_ACCESS_TOKEN, CONF_TTL
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.util import Throttle
 
 from hx3 import api
 
-from .const import _LOGGER, CONF_DEV_ID, CONF_LOC_ID, DOMAIN
+from .const import _LOGGER, CONF_DEV_ID, CONF_LAST_REFRESH, CONF_LOC_ID, CONF_REFRESH_TOKEN, DOMAIN
 
 UPDATE_LOOP_SLEEP_TIME = 5
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=300)
@@ -20,8 +20,20 @@ async def async_setup_entry(hass, config):
     """Set up the Hx 3 thermostat."""
     email = config.data[CONF_EMAIL]
     token = config.data[CONF_TOKEN]
+    access_token = config.data.get(CONF_ACCESS_TOKEN) or None
+    refresh_token = config.data.get(CONF_REFRESH_TOKEN) or None
+    ttl = config.data.get(CONF_TTL) or None
+    last_refresh = config.data.get(CONF_LAST_REFRESH) or 0
 
-    client = await hass.async_add_executor_job(get_hx3_client, email, token)
+    client = await hass.async_add_executor_job(
+        get_hx3_client,
+        email,
+        token,
+        access_token,
+        refresh_token,
+        ttl,
+        last_refresh,
+    )
 
     if client is None:
         return False
@@ -42,7 +54,18 @@ async def async_setup_entry(hass, config):
         _LOGGER.debug("No devices found")
         return False
 
-    data = Hx3Data(hass, config, client, email, token, controllers)
+    data = Hx3Data(
+        hass,
+        config,
+        client,
+        email,
+        token,
+        controllers,
+        access_token=access_token,
+        refresh_token=refresh_token,
+        ttl=ttl,
+        last_refresh=last_refresh,
+    )
     await data.async_update()
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][config.entry_id] = data
@@ -66,10 +89,17 @@ async def async_unload_entry(hass, config):
     return unload_ok
 
 
-def get_hx3_client(email: str, token: str):
+def get_hx3_client(email: str, token: str, access_token: str = None, refresh_token: str = None, ttl: int = None, last_refresh: int = 0):
     """Initialize the hx3 client."""
     try:
-        return api.Hx3Api(email, token)
+        return api.Hx3Api(
+            email,
+            token=token,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            ttl=ttl,
+            last_refresh=last_refresh,
+        )
     except api.AuthError:
         _LOGGER.error("Failed to login to Hx 3 account %s", email)
         return None
@@ -84,13 +114,17 @@ def get_hx3_client(email: str, token: str):
 class Hx3Data:
     """Get the latest data and update."""
 
-    def __init__(self, hass, config, client, email, token, controllers):
+    def __init__(self, hass, config, client, email, token, controllers, access_token, refresh_token, ttl, last_refresh):
         """Initialize the data object."""
         self._hass = hass
         self._config = config
         self._client = client
         self._email = email
         self._token = token
+        self._access_token = access_token
+        self._refresh_token = refresh_token
+        self._ttl = ttl
+        self._last_refresh = last_refresh
         self.controllers = controllers
 
     async def _retry(self) -> bool:
@@ -100,7 +134,13 @@ class Hx3Data:
         will succeed, is to recreate a new hx client.
         """
         self._client = await self._hass.async_add_executor_job(
-            get_hx3_client, self._email, self._token
+            get_hx3_client,
+            self._email,
+            self._token,
+            self._access_token,
+            self._refresh_token,
+            self._ttl,
+            self._last_refresh,
         )
 
         if self._client is None:
@@ -133,6 +173,10 @@ class Hx3Data:
         while retries > 0:
             try:
                 await self._refresh_devices()
+                self._access_token = self._client._access_token
+                self._refresh_token = self._client._refresh_token
+                self._ttl = self._client._ttl
+                self._last_refresh = self._client._last_refresh
                 break
             except (
                 api.APIRateLimited,

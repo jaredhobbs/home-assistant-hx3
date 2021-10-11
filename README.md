@@ -24,9 +24,38 @@ _Component to integrate with [Hx 3 thermostats][hx3]._
 6. Restart Home Assistant
 7. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Hx 3 Thermostat"
 
+## Create new user token
+
+Before you can use this integration, you'll need to have already setup the
+Hx mobile app. Open the mobile app and navigate to Settings->Multiple users.
+
+Click the "Share code" button and copy the message that the app generates. It
+should look something like this:
+
+```text
+I'm using the Hx Thermostat app to control our thermostat.
+Once you’ve downloaded the app, you can tap this link to share my account:
+https://hx.kraftful.app/signIn/<email address>/<token>
+
+Or you can use my email to sign in:
+<email address>
+
+And enter this code when prompted:
+<token>
+
+This code will only work for a week. Let me know if you want me to send a new one.
+```
+
+Make note of the `<email address>` and `<token>` from the text.
+
 ## Configuration is done in the UI
 
-<!---->
+1. Email: enter the email from `<email address>` above
+2. Token: enter the token from `<token>` above
+3. Access token: leave this field blank
+4. Refresh token: leave this field blank
+5. TTL: leave this field as 0
+6. Last refresh: leave this field as 0
 
 ## Contributions are welcome!
 

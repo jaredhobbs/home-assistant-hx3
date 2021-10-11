@@ -6,7 +6,11 @@
         "description": "After logging into the Hx Thermostat mobile app, click on Settings -> Multiple users -> Share code.",
         "data": {
           "email": "[%key:common::config_flow::data::email%]",
-          "token": "[%key:common::config_flow::data::token%]"
+          "token": "[%key:common::config_flow::data::token%]",
+          "access_token": "[%key:common::config_flow::data::access_token%] (leave blank)",
+          "refresh_token": "Refresh token (leave blank)",
+          "ttl": "[%key:common::config_flow::data::ttl%] (leave blank)",
+          "last_refresh": "Last refresh (leave blank)"
         }
       }
     },

@@ -6,16 +6,20 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_EMAIL, CONF_TOKEN
+from homeassistant.const import CONF_EMAIL, CONF_TOKEN, CONF_ACCESS_TOKEN, CONF_TTL
 from homeassistant.data_entry_flow import FlowResult
 
 from . import get_hx3_client
-from .const import DOMAIN
+from .const import CONF_LAST_REFRESH, CONF_REFRESH_TOKEN, DOMAIN
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_EMAIL): str,
         vol.Required(CONF_TOKEN): str,
+        vol.Optional(CONF_ACCESS_TOKEN): str,
+        vol.Optional(CONF_REFRESH_TOKEN): str,
+        vol.Optional(CONF_TTL): int,
+        vol.Optional(CONF_LAST_REFRESH): int,
     }
 )
 
@@ -32,8 +36,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            valid = await self.is_valid(**user_input)
-            if valid:
+            client = await self.hass.async_add_executor_job(
+                get_hx3_client, user_input[CONF_EMAIL], user_input[CONF_TOKEN]
+            )
+            if client is not None:
+                user_input[CONF_ACCESS_TOKEN] = client._access_token
+                user_input[CONF_REFRESH_TOKEN] = client._refresh_token
+                user_input[CONF_TTL] = client._ttl
+                user_input[CONF_LAST_REFRESH] = client._last_refresh
                 return self.async_create_entry(
                     title=DOMAIN,
                     data=user_input,
@@ -44,19 +54,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
-    async def is_valid(self, **kwargs) -> bool:
-        """Check if login credentials are valid."""
-        client = await self.hass.async_add_executor_job(
-            get_hx3_client, kwargs[CONF_EMAIL], kwargs[CONF_TOKEN]
-        )
-
-        return client is not None
-
     async def async_step_import(self, import_data):
         """Import entry from configuration.yaml."""
         return await self.async_step_user(
             {
                 CONF_EMAIL: import_data[CONF_EMAIL],
                 CONF_TOKEN: import_data[CONF_TOKEN],
+                CONF_ACCESS_TOKEN: import_data[CONF_ACCESS_TOKEN],
+                CONF_REFRESH_TOKEN: import_data[CONF_REFRESH_TOKEN],
+                CONF_TTL: import_data[CONF_TTL],
+                CONF_LAST_REFRESH: import_data[CONF_LAST_REFRESH],
             }
         )
