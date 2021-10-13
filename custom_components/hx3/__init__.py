@@ -58,13 +58,7 @@ async def async_setup_entry(hass, config):
         hass,
         config,
         client,
-        email,
-        token,
         controllers,
-        access_token=access_token,
-        refresh_token=refresh_token,
-        ttl=ttl,
-        last_refresh=last_refresh,
     )
     await data.async_update()
     hass.data.setdefault(DOMAIN, {})
@@ -114,17 +108,11 @@ def get_hx3_client(email: str, token: str, access_token: str = None, refresh_tok
 class Hx3Data:
     """Get the latest data and update."""
 
-    def __init__(self, hass, config, client, email, token, controllers, access_token, refresh_token, ttl, last_refresh):
+    def __init__(self, hass, config, client, controllers):
         """Initialize the data object."""
         self._hass = hass
         self._config = config
         self._client = client
-        self._email = email
-        self._token = token
-        self._access_token = access_token
-        self._refresh_token = refresh_token
-        self._ttl = ttl
-        self._last_refresh = last_refresh
         self.controllers = controllers
 
     async def _retry(self) -> bool:
@@ -133,14 +121,15 @@ class Hx3Data:
         When we get an error, the best way to be sure that the next query
         will succeed, is to recreate a new hx client.
         """
+        client = self._client
         self._client = await self._hass.async_add_executor_job(
             get_hx3_client,
-            self._email,
-            self._token,
-            self._access_token,
-            self._refresh_token,
-            self._ttl,
-            self._last_refresh,
+            client._email,
+            client._token,
+            client._access_token,
+            client._refresh_token,
+            client._ttl,
+            client._last_refresh,
         )
 
         if self._client is None:
@@ -173,10 +162,17 @@ class Hx3Data:
         while retries > 0:
             try:
                 await self._refresh_devices()
-                self._access_token = self._client._access_token
-                self._refresh_token = self._client._refresh_token
-                self._ttl = self._client._ttl
-                self._last_refresh = self._client._last_refresh
+                client = self._client
+                self._hass.config_entries.async_update_entry(
+                    self._config,
+                    data={
+                        **self._config.data,
+                        CONF_ACCESS_TOKEN: client._access_token,
+                        CONF_REFRESH_TOKEN: client._refresh_token,
+                        CONF_TTL: client._ttl,
+                        CONF_LAST_REFRESH: client._last_refresh,
+                    }
+                )
                 break
             except (
                 api.APIRateLimited,

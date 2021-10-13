@@ -12,17 +12,6 @@ from homeassistant.data_entry_flow import FlowResult
 from . import get_hx3_client
 from .const import CONF_LAST_REFRESH, CONF_REFRESH_TOKEN, DOMAIN
 
-STEP_USER_DATA_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_EMAIL): str,
-        vol.Required(CONF_TOKEN): str,
-        vol.Optional(CONF_ACCESS_TOKEN): str,
-        vol.Optional(CONF_REFRESH_TOKEN): str,
-        vol.Optional(CONF_TTL): int,
-        vol.Optional(CONF_LAST_REFRESH): int,
-    }
-)
-
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for hx3."""
@@ -50,8 +39,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             errors["base"] = "invalid_auth"
 
+        schema = vol.Schema({
+            vol.Required(CONF_EMAIL): str,
+            vol.Required(CONF_TOKEN): str,
+        })
         return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+            step_id="user",
+            data_schema=schema,
+            errors=errors,
+            last_step=True,
         )
 
     async def async_step_import(self, import_data):
@@ -60,9 +56,5 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             {
                 CONF_EMAIL: import_data[CONF_EMAIL],
                 CONF_TOKEN: import_data[CONF_TOKEN],
-                CONF_ACCESS_TOKEN: import_data[CONF_ACCESS_TOKEN],
-                CONF_REFRESH_TOKEN: import_data[CONF_REFRESH_TOKEN],
-                CONF_TTL: import_data[CONF_TTL],
-                CONF_LAST_REFRESH: import_data[CONF_LAST_REFRESH],
             }
         )

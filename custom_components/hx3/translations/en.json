@@ -1,24 +1,20 @@
 {
-    "config": {
-        "abort": {
-            "already_configured": "Device is already configured"
-        },
-        "error": {
-            "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error"
-        },
-        "step": {
-            "user": {
-                "data": {
-                    "email": "Email",
-                    "token": "Token",
-                    "access_token": "Access token",
-                    "refresh_token": "Refresh token",
-                    "ttl": "TTL",
-                    "last_refresh": "Last refresh"
-                }
-            }
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hx 3 Thermostat",
+        "description": "Login to the Hx Thermostat mobile app, click on Settings -> Multiple users -> Share code.",
+        "data": {
+          "email": "Email address",
+          "token": "Hx code (from app)"
         }
+      }
+    },
+    "error": {
+      "invalid_auth": "Failed to authenticate"
+    },
+    "abort": {
+      "already_configured": "This device has already been configured"
     }
+  }
 }

@@ -1,11 +1,11 @@
 {
   "domain": "hx3",
   "name": "Hx 3 Thermostat",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "config_flow": true,
   "documentation": "https://github.com/jaredhobbs/home-assistant-hx3",
   "issue_tracker": "https://github.com/jaredhobbs/home-assistant-hx3/issues",
-  "requirements": ["hx3==0.1.5"],
+  "requirements": ["hx3==0.1.6"],
   "ssdp": [],
   "zeroconf": [],
   "homekit": {},

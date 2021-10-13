@@ -94,11 +94,12 @@ HW_FAN_MODE_TO_HA = {
 }
 
 
-async def async_setup_entry(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_entry(hass, config, async_add_entities):
     """Set up the Hx 3 thermostat."""
     data = hass.data[DOMAIN][config.entry_id]
     async_add_entities(
-        [Hx3Thermostat(data, controller) for controller in data.controllers]
+        [Hx3Thermostat(data, controller) for controller in data.controllers],
+        True,
     )
 
 
@@ -148,6 +149,19 @@ class Hx3Thermostat(ClimateEntity):
             }
         )
         self._attr_supported_features |= SUPPORT_FAN_MODE
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {
+                (DOMAIN, self.unique_id)
+            },
+            "name": self.name,
+            "manufacturer": self._controller.brand,
+            "model": self._controller.model,
+            "sw_version": self._controller.version,
+            "suggested_area": self._controller.location_name,
+        }
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
