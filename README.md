@@ -76,4 +76,4 @@ If you want to contribute to this please read the [Contribution guidelines](CONT
 [license-shield]: https://img.shields.io/github/license/custom-components/blueprint.svg?style=for-the-badge
 [maintenance-shield]: https://img.shields.io/badge/maintainer-Jared%20Hobbs%20%40jaredhobbs-blue.svg?style=for-the-badge
 [releases-shield]: https://img.shields.io/github/release/custom-components/blueprint.svg?style=for-the-badge
-[releases]: https://github.com/jaredhobbs/home--assistant-hx3/releases
+[releases]: https://github.com/jaredhobbs/home-assistant-hx3/releases
