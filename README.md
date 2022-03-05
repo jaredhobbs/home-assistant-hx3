@@ -27,7 +27,9 @@ _Component to integrate with [Hx 3 thermostats][hx3]._
 ## Create new user token
 
 Before you can use this integration, you'll need to have already setup the
-Hx mobile app. Open the mobile app and navigate to Settings->Multiple users.
+Hx mobile app. Open the mobile app and navigate to... 
+iOS: Settings->Multiple users.
+Android: Settings->Manage account->Share account
 
 Click the "Share code" button and copy the message that the app generates. It
 should look something like this:
