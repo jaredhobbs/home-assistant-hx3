@@ -2,8 +2,5 @@
     "name": "Hx 3 Thermostat",
     "render_readme": true,
     "hacs": "1.6.0",
-    "domains": [
-        "climate"
-    ],
-    "homeassistant": "0.118.0"
+    "homeassistant": "2025.1"
 }
