@@ -1,17 +1,19 @@
 {
   "domain": "hx3",
   "name": "Hx 3 Thermostat",
-  "version": "0.2.0",
-  "config_flow": true,
-  "documentation": "https://github.com/jaredhobbs/home-assistant-hx3",
-  "issue_tracker": "https://github.com/jaredhobbs/home-assistant-hx3/issues",
-  "requirements": ["hx3==0.1.6"],
-  "ssdp": [],
-  "zeroconf": [],
-  "homekit": {},
-  "dependencies": [],
   "codeowners": [
     "@jaredhobbs"
   ],
-  "iot_class": "cloud_polling"
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/jaredhobbs/home-assistant-hx3",
+  "homekit": {},
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/jaredhobbs/home-assistant-hx3/issues",
+  "requirements": [
+    "hx3==0.1.6"
+  ],
+  "ssdp": [],
+  "version": "0.2.0",
+  "zeroconf": []
 }

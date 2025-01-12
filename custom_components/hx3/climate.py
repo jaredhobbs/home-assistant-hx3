@@ -5,35 +5,23 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.components.climate import PLATFORM_SCHEMA, ClimateEntity
+from homeassistant.components.climate import PLATFORM_SCHEMA, ClimateEntity, HVACMode, HVACAction, ClimateEntityFeature
+
+from homeassistant.const import UnitOfTemperature
+
 from homeassistant.components.climate.const import (
     ATTR_TARGET_TEMP_HIGH,
     ATTR_TARGET_TEMP_LOW,
-    CURRENT_HVAC_COOL,
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_IDLE,
     FAN_AUTO,
     FAN_ON,
-    HVAC_MODE_COOL,
-    HVAC_MODE_HEAT,
-    HVAC_MODE_HEAT_COOL,
-    HVAC_MODE_OFF,
     PRESET_AWAY,
     PRESET_NONE,
-    SUPPORT_AUX_HEAT,
-    SUPPORT_FAN_MODE,
-    SUPPORT_PRESET_MODE,
-    SUPPORT_TARGET_HUMIDITY,
-    SUPPORT_TARGET_TEMPERATURE,
-    SUPPORT_TARGET_TEMPERATURE_RANGE,
 )
 from homeassistant.const import (
     ATTR_TEMPERATURE,
     CONF_PASSWORD,
     CONF_REGION,
     CONF_USERNAME,
-    TEMP_CELSIUS,
-    TEMP_FAHRENHEIT,
 )
 import homeassistant.helpers.config_validation as cv
 
@@ -45,6 +33,7 @@ from .const import (
     CONF_LOC_ID,
     DOMAIN,
 )
+
 
 ATTR_FAN_ACTIVE = "fan_active"
 ATTR_OUTDOOR_TEMPERATURE = "outdoor_temperature"
@@ -62,24 +51,24 @@ PLATFORM_SCHEMA = vol.All(
 )
 
 HVAC_MODE_TO_HW_MODE = {
-    HVAC_MODE_OFF: api.Mode.OFF,
-    HVAC_MODE_HEAT_COOL: api.Mode.AUTO,
-    HVAC_MODE_COOL: api.Mode.COOL,
-    HVAC_MODE_HEAT: api.Mode.HEAT,
+    HVACMode.OFF: api.Mode.OFF,
+    HVACMode.HEAT_COOL: api.Mode.AUTO,
+    HVACMode.COOL: api.Mode.COOL,
+    HVACMode.HEAT: api.Mode.HEAT,
 }
 HW_MODE_TO_HVAC_MODE = {
-    api.Mode.OFF: HVAC_MODE_OFF,
-    api.Mode.EHEAT: HVAC_MODE_HEAT,
-    api.Mode.HEAT: HVAC_MODE_HEAT,
-    api.Mode.COOL: HVAC_MODE_COOL,
-    api.Mode.AUTO: HVAC_MODE_HEAT_COOL,
-    api.Mode.MAXHEAT: HVAC_MODE_HEAT,
-    api.Mode.MAXCOOL: HVAC_MODE_COOL,
+    api.Mode.OFF:   HVACMode.OFF,
+    api.Mode.EHEAT: HVACMode.HEAT,
+    api.Mode.HEAT:  HVACMode.HEAT,
+    api.Mode.COOL:  HVACMode.COOL,
+    api.Mode.AUTO:  HVACMode.HEAT_COOL,
+    api.Mode.MAXHEAT: HVACMode.HEAT,
+    api.Mode.MAXCOOL: HVACMode.COOL,
 }
 HW_MODE_TO_HA_HVAC_ACTION = {
-    api.ActiveDemand.OFF: CURRENT_HVAC_IDLE,
-    api.ActiveDemand.HEAT: CURRENT_HVAC_HEAT,
-    api.ActiveDemand.COOL: CURRENT_HVAC_COOL,
+    api.ActiveDemand.OFF: HVACAction.OFF,
+    api.ActiveDemand.HEAT: HVACAction.HEATING,
+    api.ActiveDemand.COOL: HVACAction.COOLING,
 }
 FAN_MODE_TO_HW = {
     FAN_ON: api.FanMode.ALWAYS,
@@ -114,7 +103,7 @@ class Hx3Thermostat(ClimateEntity):
         self._attr_unique_id = controller.id
         self._attr_name = controller.name
         self._attr_temperature_unit = (
-            TEMP_CELSIUS if controller.temperature_unit == "C" else TEMP_FAHRENHEIT
+            UnitOfTemperature.CELSIUS if controller.temperature_unit == "C" else UnitOfTemperature.FAHRENHEIT
         )
         self._attr_preset_modes = [PRESET_NONE, PRESET_AWAY]
 
@@ -127,16 +116,16 @@ class Hx3Thermostat(ClimateEntity):
         )
 
         self._attr_supported_features = (
-            SUPPORT_PRESET_MODE
-            | SUPPORT_TARGET_TEMPERATURE
-            | SUPPORT_TARGET_TEMPERATURE_RANGE
+            ClimateEntityFeature.PRESET_MODE
+            | ClimateEntityFeature.TARGET_TEMPERATURE
+            | ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
         )
 
         if controller.humidification:
-            self._attr_supported_features |= SUPPORT_TARGET_HUMIDITY
+            self._attr_supported_features |= ClimateEntityFeature.TARGET_HUMIDITY
 
         if api.Mode.EHEAT in controller.system_modes:
-            self._attr_supported_features |= SUPPORT_AUX_HEAT
+            self._attr_supported_features |= ClimateEntityFeature.AUX_HEAT
 
         if not controller._data["fan"]:
             return
@@ -148,7 +137,7 @@ class Hx3Thermostat(ClimateEntity):
                 if mode in HW_FAN_MODE_TO_HA
             }
         )
-        self._attr_supported_features |= SUPPORT_FAN_MODE
+        self._attr_supported_features |= ClimateEntityFeature.FAN_MODE
 
     @property
     def device_info(self):
@@ -183,18 +172,18 @@ class Hx3Thermostat(ClimateEntity):
     @property
     def min_temp(self) -> float | None:
         """Return the minimum temperature."""
-        if self.hvac_mode in [HVAC_MODE_COOL, HVAC_MODE_HEAT_COOL]:
+        if self.hvac_mode in [HVACMode.COOL, HVACMode.HEAT_COOL]:
             return self._controller._data["coolRange"]["min"]
-        if self.hvac_mode == HVAC_MODE_HEAT:
+        if self.hvac_mode == HVACMode.HEAT:
             return self._controller._data["heatRange"]["min"]
         return None
 
     @property
     def max_temp(self) -> float | None:
         """Return the maximum temperature."""
-        if self.hvac_mode == HVAC_MODE_COOL:
+        if self.hvac_mode == HVACMode.COOL:
             return self._controller._data["coolRange"]["max"]
-        if self.hvac_mode in [HVAC_MODE_HEAT, HVAC_MODE_HEAT_COOL]:
+        if self.hvac_mode in [HVACMode.HEAT, HVACMode.HEAT_COOL]:
             return self._controller._data["heatRange"]["max"]
         return None
 
@@ -219,7 +208,7 @@ class Hx3Thermostat(ClimateEntity):
     @property
     def hvac_action(self) -> str | None:
         """Return the current running hvac operation if supported."""
-        if self.hvac_mode == HVAC_MODE_OFF:
+        if self.hvac_mode == HVACMode.OFF:
             return None
         return HW_MODE_TO_HA_HVAC_ACTION[self._controller.active_demand]
 
@@ -231,23 +220,23 @@ class Hx3Thermostat(ClimateEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
-        if self.hvac_mode == HVAC_MODE_COOL:
+        if self.hvac_mode == HVACMode.COOL:
             return self._controller.setpoint_cool
-        if self.hvac_mode == HVAC_MODE_HEAT:
+        if self.hvac_mode == HVACMode.HEAT:
             return self._controller.setpoint_heat
         return None
 
     @property
     def target_temperature_high(self) -> float | None:
         """Return the highbound target temperature we try to reach."""
-        if self.hvac_mode == HVAC_MODE_HEAT_COOL:
+        if self.hvac_mode == HVACMode.HEAT_COOL:
             return self._controller.setpoint_cool
         return None
 
     @property
     def target_temperature_low(self) -> float | None:
         """Return the lowbound target temperature we try to reach."""
-        if self.hvac_mode == HVAC_MODE_HEAT_COOL:
+        if self.hvac_mode == HVACMode.HEAT_COOL:
             return self._controller.setpoint_heat
         return None
 
@@ -276,12 +265,12 @@ class Hx3Thermostat(ClimateEntity):
 
     def set_temperature(self, **kwargs) -> None:
         """Set new target temperature."""
-        if {HVAC_MODE_COOL, HVAC_MODE_HEAT} & set(self._attr_hvac_modes):
+        if {HVACMode.COOL, HVACMode.HEAT} & set(self._attr_hvac_modes):
             self._set_temperature(**kwargs)
 
         temperature = None
         try:
-            if HVAC_MODE_HEAT_COOL in self._attr_hvac_modes:
+            if HVACMode.HEAT_COOL in self._attr_hvac_modes:
                 temperature = kwargs.get(ATTR_TARGET_TEMP_HIGH)
                 if temperature:
                     self._controller.setpoint_cool = temperature
@@ -309,10 +298,10 @@ class Hx3Thermostat(ClimateEntity):
 
     def turn_aux_heat_off(self) -> None:
         """Turn auxiliary heater off."""
-        if HVAC_MODE_HEAT in self.hvac_modes:
-            self.set_hvac_mode(HVAC_MODE_HEAT)
+        if HVACMode.HEAT in self.hvac_modes:
+            self.set_hvac_mode(HVACMode.HEAT)
         else:
-            self.set_hvac_mode(HVAC_MODE_OFF)
+            self.set_hvac_mode(HVACMode.OFF)
 
     async def async_update(self):
         """Get the latest state from the service."""
