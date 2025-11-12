@@ -1,3 +1,4 @@
+
 {
   "domain": "hx3",
   "name": "Hx 3 Thermostat",
@@ -11,7 +12,7 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/jaredhobbs/home-assistant-hx3/issues",
   "requirements": [
-    "hx3==0.1.6"
+    "gql[requests]>=3.0.0"
   ],
   "ssdp": [],
   "version": "0.2.0",

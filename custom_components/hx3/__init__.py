@@ -7,7 +7,7 @@ from homeassistant.const import CONF_EMAIL, CONF_TOKEN, CONF_ACCESS_TOKEN, CONF_
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.util import Throttle
 
-from hx3 import api
+from .hx3_api import api
 
 from .const import _LOGGER, CONF_DEV_ID, CONF_LAST_REFRESH, CONF_LOC_ID, CONF_REFRESH_TOKEN, DOMAIN
 

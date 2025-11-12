@@ -25,7 +25,7 @@ from homeassistant.const import (
 )
 import homeassistant.helpers.config_validation as cv
 
-from hx3 import api
+from .hx3_api import api
 
 from .const import (
     _LOGGER,
