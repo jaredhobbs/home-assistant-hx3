@@ -14,6 +14,22 @@ _Component to integrate with [Hx 3 thermostats][hx3]._
 
 ![example][exampleimg]
 
+## Important Update - API Endpoint Change
+
+**Note:** As of the latest version, this integration now uses a vendored version of the `hx3` library with an updated API endpoint.
+
+### What Changed
+
+The Hx thermostat cloud API endpoint has changed from `hx.kraftful.cloud` to `hx-thermostat.herokuapp.com`. This integration has been updated to:
+
+- **Vendor the hx3 library locally** - The `hx3` Python library (v0.1.6) is now included directly in this integration at `custom_components/hx3/hx3_api/`
+- **Update the API endpoint** - All API calls now use `https://hx-thermostat.herokuapp.com`
+- **Fix authentication issues** - Disabled automatic GraphQL schema fetching to prevent authentication errors during initialization
+
+### Why This Matters
+
+If you were experiencing DNS resolution errors or connection failures with the old `hx.kraftful.cloud` endpoint, this update resolves those issues. The integration will now connect reliably to the current Hx thermostat API.
+
 ## Installation
 
 1. Using your tool of choice, open the directory (folder) for your HA configuration (where you find `configuration.yaml`).
