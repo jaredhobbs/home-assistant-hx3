@@ -124,9 +124,6 @@ class Hx3Thermostat(ClimateEntity):
         if controller.humidification:
             self._attr_supported_features |= ClimateEntityFeature.TARGET_HUMIDITY
 
-        if api.Mode.EHEAT in controller.system_modes:
-            self._attr_supported_features |= ClimateEntityFeature.AUX_HEAT
-
         if not controller._data["fan"]:
             return
 
@@ -166,10 +163,6 @@ class Hx3Thermostat(ClimateEntity):
         return self._controller.away
 
     @property
-    def is_aux_heat(self) -> bool:
-        return self._controller.system_mode == api.Mode.EHEAT
-
-    @property
     def min_temp(self) -> float | None:
         """Return the minimum temperature."""
         if self.hvac_mode in [HVACMode.COOL, HVACMode.HEAT_COOL]:
@@ -194,11 +187,13 @@ class Hx3Thermostat(ClimateEntity):
 
     @property
     def min_humidity(self) -> int:
-        return self._controller.humidification["min"]
+        # hx3's `humidification` dict is a raw fraction (e.g. 0.3 for 30%),
+        # unlike `current_humidity` which hx3 already converts to a percentage.
+        return round(self._controller.humidification["min"] * 100)
 
     @property
     def max_humidity(self) -> int:
-        return self._controller.humidification["max"]
+        return round(self._controller.humidification["max"] * 100)
 
     @property
     def hvac_mode(self) -> str:
@@ -291,17 +286,6 @@ class Hx3Thermostat(ClimateEntity):
     def set_preset_mode(self, preset_mode: str) -> None:
         """Set new preset mode."""
         self._controller.away = preset_mode == PRESET_AWAY
-
-    def turn_aux_heat_on(self) -> None:
-        """Turn auxiliary heater on."""
-        self._controller.system_mode = api.Mode.EHEAT
-
-    def turn_aux_heat_off(self) -> None:
-        """Turn auxiliary heater off."""
-        if HVACMode.HEAT in self.hvac_modes:
-            self.set_hvac_mode(HVACMode.HEAT)
-        else:
-            self.set_hvac_mode(HVACMode.OFF)
 
     async def async_update(self):
         """Get the latest state from the service."""

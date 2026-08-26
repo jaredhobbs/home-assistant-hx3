@@ -13,7 +13,7 @@ from .const import _LOGGER, CONF_DEV_ID, CONF_LAST_REFRESH, CONF_LOC_ID, CONF_RE
 
 UPDATE_LOOP_SLEEP_TIME = 5
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=300)
-PLATFORMS = ["climate"]
+PLATFORMS = ["climate", "sensor", "switch"]
 
 
 async def async_setup_entry(hass, config):
