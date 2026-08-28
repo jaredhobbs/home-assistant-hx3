@@ -55,6 +55,10 @@ class Hx3HumidificationModeSelect(SelectEntity):
         }
 
     @property
+    def available(self) -> bool:
+        return self._data.is_available()
+
+    @property
     def current_option(self) -> str | None:
         return HW_MODE_TO_HA.get(self._controller.humidification_mode)
 
@@ -90,6 +94,10 @@ class Hx3DehumidificationModeSelect(SelectEntity):
             "sw_version": self._controller.version,
             "suggested_area": self._controller.location_name,
         }
+
+    @property
+    def available(self) -> bool:
+        return self._data.is_available()
 
     @property
     def current_option(self) -> str | None:

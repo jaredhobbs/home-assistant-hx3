@@ -55,6 +55,10 @@ class Hx3EmergencyHeatSwitch(SwitchEntity):
         }
 
     @property
+    def available(self) -> bool:
+        return self._data.is_available()
+
+    @property
     def is_on(self) -> bool:
         """Return True if emergency heat is currently active."""
         return self._controller.system_mode == api.Mode.EHEAT

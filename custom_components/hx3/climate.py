@@ -156,6 +156,10 @@ class Hx3Thermostat(ClimateEntity):
         return data
 
     @property
+    def available(self) -> bool:
+        return self._data.is_available()
+
+    @property
     def away(self):
         return self._controller.away
 

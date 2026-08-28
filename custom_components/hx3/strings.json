@@ -8,13 +8,21 @@
           "email": "[%key:common::config_flow::data::email%]",
           "token": "Hx code (from app)"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Hx 3 Thermostat",
+        "description": "The stored share code for {email} was rejected. Login to the Hx Thermostat mobile app, click on Settings -> Multiple users -> Share code, and enter a new one.",
+        "data": {
+          "token": "Hx code (from app)"
+        }
       }
     },
     "error": {
       "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]"
     },
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
     }
   }
 }

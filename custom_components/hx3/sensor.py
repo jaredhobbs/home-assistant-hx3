@@ -53,6 +53,10 @@ class Hx3HumiditySensor(SensorEntity):
         }
 
     @property
+    def available(self) -> bool:
+        return self._data.is_available()
+
+    @property
     def native_value(self) -> float | None:
         """Return the current humidity."""
         return self._controller.current_humidity
