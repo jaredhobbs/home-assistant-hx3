@@ -8,13 +8,21 @@
           "email": "Email address",
           "token": "Hx code (from app)"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Hx 3 Thermostat",
+        "description": "The stored share code for {email} was rejected. Login to the Hx Thermostat mobile app, click on Settings -> Multiple users -> Share code, and enter a new one.",
+        "data": {
+          "token": "Hx code (from app)"
+        }
       }
     },
     "error": {
       "invalid_auth": "Failed to authenticate"
     },
     "abort": {
-      "already_configured": "This device has already been configured"
+      "already_configured": "This device has already been configured",
+      "reauth_successful": "Re-authentication was successful"
     }
   }
 }

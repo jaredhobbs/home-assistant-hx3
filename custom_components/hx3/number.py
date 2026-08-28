@@ -58,7 +58,10 @@ class Hx3HumidifySetpoint(NumberEntity):
 
     @property
     def available(self) -> bool:
-        return self._controller.humidification_mode == api.HumidificationMode.MANUAL
+        return (
+            self._data.is_available()
+            and self._controller.humidification_mode == api.HumidificationMode.MANUAL
+        )
 
     @property
     def native_min_value(self) -> float:
@@ -116,7 +119,10 @@ class Hx3DehumidifySetpoint(NumberEntity):
 
     @property
     def available(self) -> bool:
-        return self._controller.dehumidification_mode == api.HumidificationMode.MANUAL
+        return (
+            self._data.is_available()
+            and self._controller.dehumidification_mode == api.HumidificationMode.MANUAL
+        )
 
     @property
     def native_min_value(self) -> float:

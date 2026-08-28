@@ -1,10 +1,11 @@
 """The hx3 integration."""
 from __future__ import annotations
 import asyncio
+import time
 from datetime import timedelta
 
 from homeassistant.const import CONF_EMAIL, CONF_TOKEN, CONF_ACCESS_TOKEN, CONF_TTL
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.util import Throttle
 
 from hx3 import api
@@ -14,6 +15,25 @@ from .const import _LOGGER, CONF_DEV_ID, CONF_LAST_REFRESH, CONF_LOC_ID, CONF_RE
 UPDATE_LOOP_SLEEP_TIME = 5
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=300)
 PLATFORMS = ["climate", "sensor", "switch", "number", "select"]
+
+# Backoff schedule (seconds) between retries of a single update after a
+# transient failure (e.g. the API returning 503). The current client/auth
+# token is reused as-is for each retry -- transient failures are a server
+# problem, not a token problem, so there's no need to rebuild the client.
+TRANSIENT_RETRY_DELAYS = (30, 60, 120, 300)
+
+# Extra time, beyond the normal MIN_TIME_BETWEEN_UPDATES cadence, that
+# entities keep reporting their last-known state as available after a
+# failed refresh, while retries continue in the background. HA marks an
+# entity unavailable the moment its async_update() raises, which would
+# otherwise happen on every single failed attempt (including ones a retry
+# a few seconds later quietly fixes). Entities instead check
+# Hx3Data.is_available(), so a brief blip doesn't surface as Unavailable
+# unless refreshes have actually been failing for this long. This is
+# added on top of MIN_TIME_BETWEEN_UPDATES (not a replacement for it) --
+# a successful refresh is only ever attempted that often, so the grace
+# window has to cover that normal gap too, not just the retry time.
+AVAILABILITY_GRACE_PERIOD = MIN_TIME_BETWEEN_UPDATES.total_seconds() + 120
 
 
 async def async_setup_entry(hass, config):
@@ -36,7 +56,10 @@ async def async_setup_entry(hass, config):
     )
 
     if client is None:
-        return False
+        raise ConfigEntryAuthFailed(
+            "Failed to authenticate with the Hx Thermostat API; a new share "
+            "code is required"
+        )
 
     loc_id = config.data.get(CONF_LOC_ID)
     dev_id = config.data.get(CONF_DEV_ID)
@@ -65,14 +88,7 @@ async def async_setup_entry(hass, config):
     hass.data[DOMAIN][config.entry_id] = data
     await hass.config_entries.async_forward_entry_setups(config, PLATFORMS)
 
-    config.async_on_unload(config.add_update_listener(update_listener))
-
     return True
-
-
-async def update_listener(hass, config) -> None:
-    """Update listener."""
-    await hass.config_entries.async_reload(config.entry_id)
 
 
 async def async_unload_entry(hass, config):
@@ -114,40 +130,16 @@ class Hx3Data:
         self._config = config
         self._client = client
         self.controllers = controllers
+        self._last_success = float("-inf")
 
-    async def _retry(self) -> bool:
-        """Recreate a new hx client.
+    def is_available(self) -> bool:
+        """Whether entities should still report available.
 
-        When we get an error, the best way to be sure that the next query
-        will succeed, is to recreate a new hx client.
+        True as long as a refresh has succeeded within the last
+        AVAILABILITY_GRACE_PERIOD seconds, even if the most recent attempt
+        failed and is currently being retried.
         """
-        client = self._client
-        self._client = await self._hass.async_add_executor_job(
-            get_hx3_client,
-            client._email,
-            client._token,
-            client._access_token,
-            client._refresh_token,
-            client._ttl,
-            client._last_refresh,
-        )
-
-        if self._client is None:
-            return False
-
-        controllers = [
-            controller
-            for location in self._client.locations_by_id.values()
-            for controller in location.controllers_by_id.values()
-        ]
-
-        if not controllers:
-            _LOGGER.error("Failed to find any controllers")
-            return False
-
-        self.controllers = controllers
-        await self._hass.config_entries.async_reload(self._config.entry_id)
-        return True
+        return time.monotonic() - self._last_success < AVAILABILITY_GRACE_PERIOD
 
     async def _refresh_devices(self):
         """Refresh each enabled device."""
@@ -155,35 +147,65 @@ class Hx3Data:
             await self._hass.async_add_executor_job(device.refresh)
             await asyncio.sleep(UPDATE_LOOP_SLEEP_TIME)
 
+    def _persist_tokens(self) -> None:
+        """Persist the client's (possibly rotated) tokens on the config entry.
+
+        This is a plain data write for durability across restarts only --
+        there's deliberately no update listener registered on this entry,
+        because HA reloads a whole entry (tearing down and recreating every
+        entity, briefly showing them all as Unavailable) whenever a
+        listener-bearing entry's data actually changes. The token/ttl/
+        last_refresh values only actually change when the hx3 client
+        rotates the access token near TTL expiry (every few hours), which
+        would otherwise reload the integration on that same cadence for no
+        reason -- the new token still works fine in the existing client,
+        nothing needs to be rebuilt.
+        """
+        client = self._client
+        self._hass.config_entries.async_update_entry(
+            self._config,
+            data={
+                **self._config.data,
+                CONF_ACCESS_TOKEN: client._access_token,
+                CONF_REFRESH_TOKEN: client._refresh_token,
+                CONF_TTL: client._ttl,
+                CONF_LAST_REFRESH: client._last_refresh,
+            },
+        )
+
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self) -> None:
-        """Update the state."""
-        retries = 3
-        while retries > 0:
+        """Update the state.
+
+        Transient failures (the API returning 503, connection drops, etc.)
+        are retried on the existing client/token with a growing backoff,
+        rather than tearing down and rebuilding the client -- the token is
+        still fine, the server is just having a bad moment. If the token
+        itself is no longer valid, retrying won't help, so we raise
+        ConfigEntryAuthFailed instead, which prompts the user to
+        reauthenticate (enter a new share code) without deleting and
+        re-adding the integration.
+        """
+        for delay in (*TRANSIENT_RETRY_DELAYS, None):
             try:
                 await self._refresh_devices()
-                client = self._client
-                self._hass.config_entries.async_update_entry(
-                    self._config,
-                    data={
-                        **self._config.data,
-                        CONF_ACCESS_TOKEN: client._access_token,
-                        CONF_REFRESH_TOKEN: client._refresh_token,
-                        CONF_TTL: client._ttl,
-                        CONF_LAST_REFRESH: client._last_refresh,
-                    }
-                )
-                break
+            except api.AuthError as exp:
+                raise ConfigEntryAuthFailed(
+                    "Hx 3 authentication failed; a new share code is required"
+                ) from exp
             except (
-                api.APIRateLimited,
+                api.APIError,
                 api.ConnectionError,
                 api.ConnectionTimeout,
                 OSError,
             ) as exp:
-                retries -= 1
-                if retries == 0:
+                if delay is None:
                     raise exp
-                result = await self._retry()
-                if not result:
-                    raise exp
-                _LOGGER.error("Hx 3 update failed, Retrying - Error: %s", exp)
+                _LOGGER.warning(
+                    "Hx 3 update failed, retrying in %ss - Error: %s", delay, exp
+                )
+                await asyncio.sleep(delay)
+            else:
+                self._persist_tokens()
+                self._last_success = time.monotonic()
+                return

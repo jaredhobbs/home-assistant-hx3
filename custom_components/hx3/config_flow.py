@@ -58,3 +58,39 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_TOKEN: import_data[CONF_TOKEN],
             }
         )
+
+    async def async_step_reauth(self, entry_data: dict[str, Any]) -> FlowResult:
+        """Handle reauthentication, e.g. after the stored token is rejected."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Prompt for a fresh share code and apply it to the existing entry."""
+        errors = {}
+        reauth_entry = self._get_reauth_entry()
+
+        if user_input is not None:
+            client = await self.hass.async_add_executor_job(
+                get_hx3_client, reauth_entry.data[CONF_EMAIL], user_input[CONF_TOKEN]
+            )
+            if client is not None:
+                return self.async_update_reload_and_abort(
+                    reauth_entry,
+                    data_updates={
+                        CONF_TOKEN: user_input[CONF_TOKEN],
+                        CONF_ACCESS_TOKEN: client._access_token,
+                        CONF_REFRESH_TOKEN: client._refresh_token,
+                        CONF_TTL: client._ttl,
+                        CONF_LAST_REFRESH: client._last_refresh,
+                    },
+                )
+            errors["base"] = "invalid_auth"
+
+        schema = vol.Schema({vol.Required(CONF_TOKEN): str})
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"email": reauth_entry.data[CONF_EMAIL]},
+        )
